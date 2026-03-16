@@ -61,16 +61,30 @@ echo -e "${YELLOW}🚀 Step 3: Deploying to VPS${NC}"
 
 VPS_HOST="36.50.27.85"
 VPS_USER="root"
+VPS_PASSWORD="E@gUrVfX9hb3\$BFK"
 VPS_DIR="/var/www/betonabi-nextjs"
 PM2_APP_NAME="betonabi-nextjs"
 
 echo "Syncing files to VPS..."
-rsync -avz --delete \
-  --exclude 'node_modules' \
-  --exclude '.git' \
-  --exclude '.next/cache' \
-  --exclude '.env.local' \
-  ./ ${VPS_USER}@${VPS_HOST}:${VPS_DIR}/
+
+# Use sshpass if available, otherwise use regular rsync (requires SSH key)
+if command -v sshpass &> /dev/null; then
+    sshpass -p "${VPS_PASSWORD}" rsync -avz --delete \
+      --exclude 'node_modules' \
+      --exclude '.git' \
+      --exclude '.next/cache' \
+      --exclude '.env.local' \
+      -e "ssh -o StrictHostKeyChecking=no" \
+      ./ ${VPS_USER}@${VPS_HOST}:${VPS_DIR}/
+else
+    # Fallback to regular rsync (requires SSH key setup)
+    rsync -avz --delete \
+      --exclude 'node_modules' \
+      --exclude '.git' \
+      --exclude '.next/cache' \
+      --exclude '.env.local' \
+      ./ ${VPS_USER}@${VPS_HOST}:${VPS_DIR}/
+fi
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ File sync failed${NC}"
@@ -82,7 +96,8 @@ echo -e "${GREEN}✅ Files synced${NC}\n"
 # Step 4: Install dependencies and restart on VPS
 echo -e "${YELLOW}🔄 Step 4: Installing dependencies and restarting app${NC}"
 
-ssh ${VPS_USER}@${VPS_HOST} << 'ENDSSH'
+if command -v sshpass &> /dev/null; then
+    sshpass -p "${VPS_PASSWORD}" ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} << 'ENDSSH'
 cd /var/www/betonabi-nextjs
 
 echo "Installing dependencies..."
@@ -94,6 +109,20 @@ pm2 restart betonabi-nextjs
 echo "Checking app status..."
 pm2 info betonabi-nextjs
 ENDSSH
+else
+    ssh ${VPS_USER}@${VPS_HOST} << 'ENDSSH'
+cd /var/www/betonabi-nextjs
+
+echo "Installing dependencies..."
+npm install --production
+
+echo "Restarting PM2 app..."
+pm2 restart betonabi-nextjs
+
+echo "Checking app status..."
+pm2 info betonabi-nextjs
+ENDSSH
+fi
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ VPS deployment failed${NC}"
