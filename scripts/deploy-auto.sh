@@ -11,33 +11,39 @@ echo -e "${BLUE}🚀 Betonabi Deploy Script${NC}\n"
 
 # Step 1: Git commit and push
 echo -e "${YELLOW}📝 Step 1: Git Commit & Push${NC}"
-read -p "Enter commit message: " commit_message
 
-if [ -z "$commit_message" ]; then
-    echo -e "${RED}❌ Commit message cannot be empty${NC}"
-    exit 1
+# Check if there are any changes
+if [[ -z $(git status -s) ]]; then
+    echo -e "${BLUE}ℹ️  No changes to commit, skipping git push${NC}\n"
+else
+    read -p "Enter commit message: " commit_message
+
+    if [ -z "$commit_message" ]; then
+        echo -e "${RED}❌ Commit message cannot be empty${NC}"
+        exit 1
+    fi
+
+    echo "Adding all changes..."
+    git add .
+
+    echo "Committing changes..."
+    git commit -m "$commit_message"
+
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Git commit failed${NC}"
+        exit 1
+    fi
+
+    echo "Pushing to remote..."
+    git push
+
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Git push failed${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}✅ Git push successful${NC}\n"
 fi
-
-echo "Adding all changes..."
-git add .
-
-echo "Committing changes..."
-git commit -m "$commit_message"
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Git commit failed${NC}"
-    exit 1
-fi
-
-echo "Pushing to remote..."
-git push
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Git push failed${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✅ Git push successful${NC}\n"
 
 # Step 2: Build locally
 echo -e "${YELLOW}🔨 Step 2: Building Next.js app locally${NC}"
